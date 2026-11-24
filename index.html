@@ -1,0 +1,483 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>TrafoLab · Análisis de transformadores</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* Layout: banda oscura con selector de modo (transformador / motor) y pasos; contenido en tarjetas sobre fondo verde-gris */
+:root{--gut:clamp(16px,4vw,48px);--bg:#F3F6F4;--card:#fff;--ink:#2C3E50;--mut:#5f7080;--line:#e1e8e4;--g:#2ECC71;--gs:#e8f8ef;--gd:#1a9a52;--d:#2C3E50;--d2:#3b4f63;--warn:#fdf1dc;--warnl:#f0c36d;--red:#e74c3c;--redbg:#fdecea}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141c24;--card:#1d2833;--ink:#e8eef2;--mut:#9fb0bd;--line:#2c3b48;--gs:#1c3a2b;--gd:#4ee08c;--warn:#3a3020;--warnl:#8a6a25;--redbg:#3d2224;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141c24;--card:#1d2833;--ink:#e8eef2;--mut:#9fb0bd;--line:#2c3b48;--gs:#1c3a2b;--gd:#4ee08c;--warn:#3a3020;--warnl:#8a6a25;--redbg:#3d2224;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Roboto,'Open Sans',system-ui,sans-serif;font-size:14px}
+.mono{font-family:'Roboto Mono',ui-monospace,monospace}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+header{background:var(--d);color:#fff;margin-top:calc(-1*env(safe-area-inset-top,0px));padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:10px;padding-left:max(var(--gut),env(safe-area-inset-left,0px));padding-right:max(var(--gut),env(safe-area-inset-right,0px))}
+.hd{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px 16px}
+.logo{display:flex;gap:10px;align-items:center;min-width:0}.logo b{display:grid;place-items:center;width:36px;height:36px;border-radius:9px;background:var(--g);color:#fff;flex:none}
+.logo small{display:block;color:#aab8c4;font-size:12px}
+.pill{justify-self:end;font-size:11px;font-weight:700;letter-spacing:.5px;background:var(--d2);color:#fff;border-radius:99px;padding:6px 12px;white-space:nowrap}.pill:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--g);margin-right:7px}
+.mode{display:flex;gap:4px;background:#22303d;border-radius:11px;padding:4px}
+.mode button{background:none;border:0;color:#aab8c4;padding:9px 16px;border-radius:8px;font:500 14px Roboto,sans-serif;cursor:pointer;white-space:nowrap}
+.mode button.on{background:var(--g);color:#fff;font-weight:700}
+nav{display:flex;gap:6px;justify-content:center;margin-top:10px}
+nav button{background:none;border:0;color:#aab8c4;padding:9px 14px;border-radius:8px;font:500 14px Roboto,sans-serif;cursor:pointer}
+nav button.on{background:var(--d2);color:#fff}
+main{padding-block:28px 48px;padding-left:max(var(--gut),env(safe-area-inset-left,0px));padding-right:max(var(--gut),env(safe-area-inset-right,0px));max-width:1500px;margin:auto}
+.step{color:var(--g);font-size:12px;font-weight:700;letter-spacing:.6px}.step:before{content:"";display:inline-block;width:22px;height:3px;background:var(--g);margin-right:8px;vertical-align:middle}
+h1{margin:6px 0 4px;font-size:clamp(26px,4vw,38px);text-wrap:balance}p.sub{color:var(--mut);margin:0 0 20px;max-width:75ch}
+.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.stack{display:grid;gap:18px;align-content:start}
+.kpis{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+.card h3{margin:0 0 2px;font-size:17px}.card .s{color:var(--mut);font-size:12.5px;margin-bottom:12px}
+.kpi small{color:var(--mut);font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.3px}.kpi .v{font:500 clamp(20px,3vw,28px) 'Roboto Mono',monospace;margin:6px 0 2px;overflow-wrap:anywhere}.kpi .n{font-size:12px;color:var(--mut)}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+input[type=number],input[type=text]{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font:500 14px 'Roboto Mono',monospace}
+input[type=text]{font-family:Roboto,sans-serif;font-weight:400}
+input.bad{border-color:var(--red);background:var(--redbg)}
+.grp{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--bg)}.grp b{font-size:14px;display:block;margin-bottom:8px}
+.row-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}.row-h b{margin:0}
+.hint{font-size:11.5px;color:var(--mut);margin-top:4px}
+.err{color:var(--red);font-size:12.5px;margin:6px 0;min-height:16px}
+.btn{background:var(--g);color:#fff;border:0;border-radius:10px;padding:12px 22px;font:700 15px Roboto,sans-serif;cursor:pointer;box-shadow:0 4px 12px #2ecc7144}
+.btn.dk{background:var(--d);box-shadow:none;border:1px solid var(--d2)}.btn.ol{background:none;color:var(--ink);border:1px solid var(--line);box-shadow:none}.btn.sm{padding:6px 12px;font-size:12.5px;font-weight:500}
+.acts{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.dlmsg{font-size:13px;color:var(--mut)}
+.auto{background:var(--gs);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:center;margin:12px 0;font-size:13px}
+.circ{background:#1f2d3a;border-radius:12px;padding:6px;overflow:hidden}.circ svg{width:100%;height:auto;display:block}
+.rel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.rel div{background:var(--bg);border-radius:10px;padding:10px;font-size:12px;color:var(--mut)}.rel b{display:block;color:var(--ink);font:500 15px 'Roboto Mono',monospace;margin-top:3px;overflow-wrap:anywhere}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th{background:var(--d);color:#fff;text-align:left;padding:9px 10px;font-size:12px;white-space:nowrap}td{padding:8px 10px;border-bottom:1px solid var(--line)}
+table.sym td:first-child{color:var(--gd);font:500 13px 'Roboto Mono',monospace}td.n{text-align:right;font-family:'Roboto Mono',monospace;white-space:nowrap}th.n{text-align:right}
+.res{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.r{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;gap:10px;align-items:flex-start;min-width:0}.r.hi{background:var(--gs)}
+.r i{font:500 12px 'Roboto Mono',monospace;background:var(--bg);border-radius:7px;padding:5px 7px;font-style:normal;flex:none}.r.hi i{background:var(--g);color:#fff}
+.r div{font-size:13px;font-weight:500;min-width:0}.r span{display:block;font:500 12.5px 'Roboto Mono',monospace;color:var(--mut);margin-top:4px;overflow-wrap:anywhere}
+.alert{border-radius:14px;padding:14px 16px;background:var(--warn);border:1px solid var(--warnl);margin-bottom:18px}.alert.bad{background:var(--redbg);border-color:var(--red)}.alert.ok{background:var(--gs);border-color:var(--g)}
+.alert b{color:var(--red)}.alert.ok b{color:var(--gd)}.alert .fp{font:700 22px 'Roboto Mono',monospace;color:var(--red)}
+.al-r{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}
+.ch{position:relative;height:230px}.empty{color:var(--mut);font-size:13px;text-align:center;padding:70px 12px}
+.tab{display:none}.tab.on{display:block}
+textarea{width:100%;height:160px;font:12px 'Roboto Mono',monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:8px}
+@media(max-width:700px){.hd{grid-template-columns:1fr auto}.pill{order:2}.mode{order:3;grid-column:1/-1}.mode button{flex:1;padding:9px 6px;font-size:13px;white-space:normal}nav button{flex:1;padding:9px 4px;font-size:12.5px}}
+</style>
+
+<header>
+ <div class="hd">
+  <div class="logo"><b>⚡</b><div><strong>TrafoLab</strong><small>Análisis eléctrico</small></div></div>
+  <div class="mode" role="tablist" aria-label="Tipo de análisis">
+   <button type="button" data-mode="trafo" class="on" role="tab" aria-selected="true">Análisis de transformador</button>
+   <button type="button" data-mode="motor" role="tab" aria-selected="false">Análisis de motor</button>
+  </div>
+  <span class="pill">EN LÍNEA</span>
+ </div>
+ <nav data-mode="trafo" aria-label="Pasos del análisis de transformador"><button type="button" data-t="t1" class="on">Ingreso de datos</button><button type="button" data-t="t2">Resultados</button><button type="button" data-t="t3">Gráficas y alertas</button></nav>
+ <nav data-mode="motor" hidden aria-label="Pasos del análisis de motor"><button type="button" data-t="m1" class="on">Ingreso de motores</button><button type="button" data-t="m2">Resultados</button><button type="button" data-t="m3">Gráficas y alertas</button></nav>
+</header>
+<main>
+
+<!-- ===================== TRANSFORMADOR ===================== -->
+<section class="tab on" id="t1"><div class="step">PASO 1 DE 3</div><h1>Configura el transformador</h1><p class="sub">Ingresa los valores de ensayo y placa. Los resultados se recalculan automáticamente. Datos de demostración, no son mediciones reales.</p>
+<div class="grid"><div>
+<div class="card"><h3>Tabla 1 · Pruebas</h3><div class="s">Vacío medido en el lado de baja (X); cortocircuito en el lado de alta (H)</div>
+<div class="grp"><b>Prueba de vacío</b><div class="f"><div><label for="oc_i">Corriente (A)</label><input type="number" step="any" id="oc_i" value="1.82"></div><div><label for="oc_v">Voltaje (V)</label><input type="number" step="any" id="oc_v" value="230"></div><div><label for="oc_p">Potencia (W)</label><input type="number" step="any" id="oc_p" value="86"></div></div></div>
+<div class="grp"><b>Datos de los devanados</b><div class="f"><div><label for="wmode">Se conocen</label><select id="wmode" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(127,140,150,.4);background:transparent;color:inherit;font:inherit"><option value="sc">Prueba de cortocircuito</option><option value="given">RH y XLH dados (lado H)</option></select></div></div></div>
+<div class="grp" id="g_given" hidden><b>Devanado H dado</b><div class="f"><div><label for="rhg">RH (Ω)</label><input type="number" step="any" id="rhg" value="7"></div><div><label for="xlhg">XLH (Ω)</label><input type="number" step="any" id="xlhg" value="19"></div></div></div>
+<div class="grp" id="g_sc"><b>Prueba de cortocircuito</b><div class="f"><div><label for="sc_i">Corriente (A)</label><input type="number" step="any" id="sc_i" value="8.40"></div><div><label for="sc_v">Voltaje (V)</label><input type="number" step="any" id="sc_v" value="42"></div><div><label for="sc_p">Potencia (W)</label><input type="number" step="any" id="sc_p" value="248"></div></div></div>
+<h3 style="margin-top:16px">Datos nominales y de operación</h3><div class="f" style="margin-top:8px">
+<div><label for="S">Potencia nominal S (kVA)</label><input type="number" step="any" id="S" value="10"></div><div><label for="VH">Voltaje primario VH (V)</label><input type="number" step="any" id="VH" value="2400"></div><div><label for="VX">Voltaje secundario VX (V)</label><input type="number" step="any" id="VX" value="240"></div><div><label for="fp">FP de carga (atrasado)</label><input type="number" step="any" id="fp" value="0.91"></div><div><label for="hrs">Horas de trabajo / mes</label><input type="number" step="any" id="hrs" value="480"></div><div><label for="tar">Tarifa (MXN/kWh)</label><input type="number" step="any" id="tar" value="1.80"></div><div><label for="iva">IVA (%)</label><input type="number" step="any" id="iva" value="16"></div><div><label for="co2">Factor CO₂ (kg/kWh)</label><input type="number" step="any" id="co2" value="0.182"></div></div>
+<div class="err" id="err"></div>
+<div class="auto"><input type="checkbox" id="auto" checked> <label for="auto" style="margin:0;color:inherit"><b>Modo automático activo</b> · actualización en tiempo real cada 2 s</label></div>
+<button class="btn" id="calc" type="button">Calcular</button></div></div>
+<div class="card"><h3>Circuito equivalente</h3><div class="s">Parámetros vinculados a las entradas</div><div class="circ" data-circ></div>
+<div class="rel"><div>Relación a = VH/VX<b id="ra">–</b></div><div>Frecuencia<b>60.0 Hz</b></div><div>FP de carga<b id="rf">–</b></div></div></div></div></section>
+
+<section class="tab" id="t2"><div class="step">PASO 2 DE 3 · RESULTADOS</div><h1>Resultados del modelo</h1><p class="sub">Parámetros, pérdidas y desempeño calculados a partir de la Tabla 1. Modelo monofásico referido al primario.</p>
+<div class="kpis" id="kp"></div>
+<div class="grid" style="margin-bottom:18px"><div class="card"><h3>Circuito equivalente normal</h3><div class="s">Referido al primario · pulsos = flujo simulado de energía</div><div class="circ" data-circ></div></div>
+<div class="card"><h3>Tabla 2 · Parámetros calculados</h3><div class="s">Referidos al devanado primario</div><div class="scroll"><table class="sym"><thead><tr><th>Símbolo</th><th>Parámetro</th><th class="n">Valor</th><th>Unidad</th></tr></thead><tbody id="tb"></tbody></table></div></div></div>
+<div class="card"><h3>Resultados completos · a–u</h3><div class="s">Valores con unidades</div><div class="res" id="res"></div></div>
+<div class="acts"><button class="btn dk" id="pdf1" type="button">Descargar PDF</button><button class="btn ol" id="csv1" type="button">Descargar CSV</button><span class="dlmsg" id="dm1" role="status" aria-live="polite"></span></div>
+<div class="card" id="xp" hidden style="margin-top:14px"><div class="s">Este visor no puede guardar archivos. Copia el texto y pégalo en Excel:</div><textarea id="csv" readonly></textarea><br><button class="btn cpb" data-ta="csv" type="button" style="margin-top:8px">Copiar</button></div></section>
+
+<section class="tab" id="t3"><div class="step">PASO 3 DE 3</div><h1>Comportamiento y alertas</h1><p class="sub">Potencia, factor de potencia y consumo en tiempo real (escenario simulado a partir de los resultados). Actualización cada 2 s.</p>
+<div id="al"></div><div class="kpis" id="kp3"></div>
+<div class="grid"><div class="card"><h3>Potencia activa (P) y aparente (S)</h3><div class="s">kW / kVA · ventana de 8 h</div><div class="ch"><canvas id="c1"></canvas></div></div>
+<div class="card"><h3>Potencia reactiva (Q)</h3><div class="s">kVAr · comportamiento inductivo</div><div class="ch"><canvas id="c2"></canvas></div></div>
+<div class="card"><h3>Factor de potencia en tiempo real</h3><div class="s">Umbral mínimo CFE: 0.95</div><div class="ch"><canvas id="c3"></canvas></div></div>
+<div class="card"><h3>Consumo mensual</h3><div class="s">Energía acumulada por mes · kWh</div><div class="ch"><canvas id="c4"></canvas></div></div>
+<div class="card"><h3>Circuito en seguimiento</h3><div class="s">Pulsos del estado actual</div><div class="circ" data-circ></div></div></div></section>
+
+<!-- ===================== MOTOR ===================== -->
+<section class="tab" id="m1"><div class="step">PASO 1 DE 3 · ANÁLISIS DE MOTOR</div><h1>Configura los motores</h1><p class="sub">Captura cada motor con sus datos de placa y operación. Puedes mezclar motores de distinto HP o FP, o agrupar motores iguales en un renglón. Tarifa GDMTH. Los datos son un ejemplo: reemplázalos por los tuyos.</p>
+<div class="grid"><div class="card"><h3>Motores</h3><div class="s">Un renglón por cada tipo de motor</div>
+<div id="mrows"></div>
+<button class="btn ol sm" id="madd" type="button">+ Agregar motor</button>
+<div class="err" id="merr" role="alert"></div>
+<div class="auto"><input type="checkbox" id="mauto" checked> <label for="mauto" style="margin:0;color:inherit"><b>Cálculo automático</b> · se actualiza al editar</label></div>
+<button class="btn" id="mcalc" type="button">Calcular</button></div>
+<div class="stack">
+<div class="card" id="pm"><h3>Parámetros tarifarios y de compensación</h3><div class="s">Valores del modelo; ajústalos si cambia tu tarifa o tu proveedor</div>
+<div class="f">
+<div><label for="p_hpkw">HP a kW</label><input type="number" step="any" id="p_hpkw" value="0.746"></div>
+<div><label for="p_tarifa">Tarifa ($/kWh)</label><input type="number" step="any" id="p_tarifa" value="3"></div>
+<div><label for="p_iva">IVA (factor)</label><input type="number" step="any" id="p_iva" value="1.16"></div>
+<div><label for="p_fpref">FP de referencia</label><input type="number" step="any" id="p_fpref" value="0.95"></div>
+<div><label for="p_fpobj">FP objetivo</label><input type="number" step="any" id="p_fpobj" value="0.98"></div>
+<div><label for="p_kvb">kvar por banco</label><input type="number" step="any" id="p_kvb" value="10"></div>
+<div><label for="p_ckv">Costo por kvar ($)</label><input type="number" step="any" id="p_ckv" value="1300"></div>
+<div><label for="p_termos">Termomagnéticos ($)</label><input type="number" step="any" id="p_termos" value="24000"></div>
+<div><label for="p_cable">Cable ($)</label><input type="number" step="any" id="p_cable" value="20000"></div>
+<div><label for="p_mo">Mano de obra ($)</label><input type="number" step="any" id="p_mo" value="8000"></div>
+<div><label for="p_toper">Tope de recargo (%)</label><input type="number" step="any" id="p_toper" value="120"></div>
+<div><label for="p_topeb">Tope de bonificación (%)</label><input type="number" step="any" id="p_topeb" value="2.5"></div>
+</div><div class="hint">FP de referencia 0.95 es el criterio del profesor; la CFE oficial usa 0.90.</div></div>
+<div class="card"><h3>Triángulo de potencias</h3><div class="s">Planta completa, antes y después de compensar</div><div class="circ" id="tri"></div>
+<div class="rel"><div>Motores<b id="tr1">–</b></div><div>Potencia activa<b id="tr2">–</b></div><div>FP global<b id="tr3">–</b></div></div></div>
+</div></div></section>
+
+<section class="tab" id="m2"><div class="step">PASO 2 DE 3 · RESULTADOS</div><h1>Resultados del análisis</h1><p class="sub">Energía, recargos y bonificaciones por factor de potencia, banco de capacitores y retorno de inversión.</p>
+<div class="kpis" id="mkp"></div>
+<div class="card" style="margin-bottom:18px"><h3>Tabla 3 · Consumo y reactivos por motor</h3><div class="s">Valores mensuales con los parámetros del paso anterior</div><div class="scroll"><table><thead><tr><th>Renglón</th><th class="n">FP</th><th class="n">kW</th><th class="n">kWh/mes</th><th class="n">Costo ($)</th><th class="n">Q1 (kvarh)</th><th class="n">Q2 (kvarh)</th><th class="n">Recargo %</th><th class="n">Recargo ($)</th><th class="n">Bonif. %</th><th class="n">Bonif. ($)</th></tr></thead><tbody id="mtb"></tbody></table></div></div>
+<div class="card"><h3>Resumen económico y banco de capacitores</h3><div class="s">Valores con unidades</div><div class="res" id="mres"></div></div>
+<div class="acts"><button class="btn dk" id="pdf2" type="button">Descargar PDF</button><button class="btn ol" id="csv2" type="button">Descargar CSV</button><span class="dlmsg" id="dm2" role="status" aria-live="polite"></span></div>
+<div class="card" id="mxp" hidden style="margin-top:14px"><div class="s">Este visor no puede guardar archivos. Copia el texto y pégalo en Excel:</div><textarea id="mcsv" readonly></textarea><br><button class="btn cpb" data-ta="mcsv" type="button" style="margin-top:8px">Copiar</button></div></section>
+
+<section class="tab" id="m3"><div class="step">PASO 3 DE 3</div><h1>Comportamiento y alertas</h1><p class="sub">Potencias de la planta, factor de potencia por motor y retorno de la inversión. Los cálculos son mensuales, no una simulación en tiempo real.</p>
+<div id="mal"></div><div class="kpis" id="mkp3"></div>
+<div class="grid"><div class="card"><h3>Factura mensual</h3><div class="s">Original vs corregida, con IVA</div><div class="ch"><canvas id="c5"></canvas></div></div>
+<div class="card"><h3>Reactivos por motor</h3><div class="s">kvarh al mes, actual y con corrección</div><div class="ch"><canvas id="c6"></canvas></div></div>
+<div class="card"><h3>Factor de potencia por motor</h3><div class="s">Rojo: por debajo del FP de referencia</div><div class="ch"><canvas id="c7"></canvas></div></div>
+<div class="card"><h3>Retorno de la inversión</h3><div class="s">Ahorro acumulado contra inversión · el cruce es el retorno</div><div class="ch" id="c8w"><canvas id="c8"></canvas></div><div class="empty" id="c8e" hidden></div></div></div></section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id),$$=s=>document.querySelectorAll(s);
+const F=(x,d=2)=>{let n=Number(x);if(Object.is(n,-0))n=0;return n.toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d})},M$=x=>'$'+F(x,2);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const K=(a,b,c)=>`<div class="card kpi"><small>${a}</small><div class="v">${b}</div><div class="n">${c}</div></div>`;
+const stamp=()=>new Date().toISOString().slice(0,10);
+
+/* ======================= NÚCLEO DEL MOTOR (equivale a calculo_fp.py) ======================= */
+/*CORE*/
+function motorCore(ms,p){
+ const t=fp=>Math.tan(Math.acos(fp));
+ const rows=ms.map(m=>{
+  let kw=m.hp*p.hp_kw*m.carga*m.cant;if(m.ef)kw/=m.ef;
+  const kwh=kw*m.horas,costo=kwh*p.tarifa,q1=kwh*t(m.fp),q2=m.fp<p.fp_obj?kwh*t(p.fp_obj):q1,fpn=Math.max(m.fp,p.fp_obj);
+  const rp=m.fp>=p.fp_ref?0:Math.min(3/5*(p.fp_ref/m.fp-1)*100,p.tope_r);
+  const bp=fpn<=p.fp_ref?0:Math.min(1/4*(1-p.fp_ref/fpn)*100,p.tope_b);
+  return {nombre:m.nombre||`${m.cant} x ${+m.hp} HP`,hp:m.hp,cant:m.cant,carga:m.carga,horas:m.horas,ef:m.ef,fp:m.fp,fpn,kw,kwh,costo,q1,q2,rp,rec:costo*rp/100,bp,bon:costo*bp/100,kvar:(q1-q2)/m.horas,ang1:Math.acos(m.fp)*180/Math.PI,ang2:Math.acos(fpn)*180/Math.PI}});
+ const sum=k=>rows.reduce((a,r)=>a+r[k],0);
+ const base=sum('costo'),rec=sum('rec'),bon=sum('bon'),orig=(base+rec)*p.iva,corr=(base-bon)*p.iva;
+ const kvar=Math.max(sum('kvar'),0),n=Math.max(0,Math.ceil(kvar/p.kvb-1e-9)),kinst=n*p.kvb;
+ const inv=kinst*p.ckv+p.termos+p.cable+p.mo,ahorro=orig-corr,meses=ahorro>0?inv/ahorro:null;
+ const Pt=sum('kw'),Q1=rows.reduce((a,r)=>a+r.kw*t(r.fp),0),Q2=rows.reduce((a,r)=>a+r.kw*t(r.fpn),0);
+ return {rows,kwh:sum('kwh'),base,rec,bon,orig,corr,kvar,n,kinst,inv,ahorro,meses,mesesR:meses==null?null:Math.ceil(meses),ya:kvar<=0,Pt,Q1,Q2,S1:Math.hypot(Pt,Q1),S2:Math.hypot(Pt,Q2)}}
+/*ENDCORE*/
+
+/* ======================= TRANSFORMADOR ======================= */
+/*TCORE*/
+function trafoCore(v){
+ const a=v.VH/v.VX,Sva=v.S*1000,InH=Sva/v.VH,InX=Sva/v.VX;
+ /* lado donde se hizo cada prueba (por corriente / voltaje nominal más cercano) */
+ const scH=v.given?true:Math.abs(Math.log(v.sc_i/InH))<=Math.abs(Math.log(v.sc_i/InX));
+ const ocX=Math.abs(Math.log(v.oc_v/v.VX))<=Math.abs(Math.log(v.oc_v/v.VH));
+ /* corto-circuito: Req y Xeq del lado de prueba, repartidos mitad y mitad */
+ const Zcc=v.given?NaN:v.sc_v/v.sc_i,Req=v.given?2*v.rhg:v.sc_p/v.sc_i**2,Xeq=v.given?2*v.xlhg:Math.sqrt(Math.max(Zcc*Zcc-Req*Req,0));
+ let RH,XLH,Rx,XLx;
+ if(scH){RH=Req/2;XLH=Xeq/2;Rx=RH/(a*a);XLx=XLH/(a*a)}
+ else{Rx=Req/2;XLx=Xeq/2;RH=Rx*a*a;XLH=XLx*a*a}
+ /* vacío: Zo = (R_dev + R_c) + j(X_dev + X_m) en el lado de prueba */
+ const Zo=v.oc_v/v.oc_i,Ro=v.oc_p/v.oc_i**2;
+ let RCp,XMp,RCH,XM;           /* R'CH, X'LmcH (lado X) · RCH, XLmcH (lado H) */
+ if(ocX){RCp=Ro-Rx;XMp=Math.sqrt(Math.max(Zo*Zo-Ro*Ro,0))-XLx;RCH=a*a*RCp;XM=a*a*XMp}
+ else{RCH=Ro-RH;XM=Math.sqrt(Math.max(Zo*Zo-Ro*Ro,0))-XLH;RCp=RCH/(a*a);XMp=XM/(a*a)}
+ return {a,scH,ocX,Zcc,Req,Xeq,RH,XLH,Rx,XLx,Zo,Ro,RCp,XMp,RCH,XM}}
+/*ENDTCORE*/
+
+const C=(r,i=0)=>({r,i}),add=(a,b)=>C(a.r+b.r,a.i+b.i),mul=(a,b)=>C(a.r*b.r-a.i*b.i,a.r*b.i+a.i*b.r),ab=a=>Math.hypot(a.r,a.i),ar=a=>Math.atan2(a.i,a.r),pol=(m,t)=>C(m*Math.cos(t),m*Math.sin(t)),sc=(a,k)=>C(a.r*k,a.i*k),dg=t=>t*180/Math.PI;
+const ids=['oc_i','oc_v','oc_p','sc_i','sc_v','sc_p','S','VH','VX','fp','hrs','tar','rhg','xlhg','iva','co2'];let R=null,MR=null;
+function calc(){const v={};let bad=[];v.given=$('wmode').value==='given';const need=k=>v.given?!['sc_i','sc_v','sc_p'].includes(k):!['rhg','xlhg'].includes(k);
+ ids.forEach(k=>{const e=$(k);v[k]=parseFloat(e.value);const ok=k==='iva'?(v[k]>=0&&isFinite(v[k])):(v[k]>0&&isFinite(v[k]));const r=need(k);e.classList.toggle('bad',r&&!ok);if(r&&!ok)bad.push(k)});
+ const msg=m=>{$('err').textContent=m;return null};
+ if(bad.length)return msg('Todos los valores deben ser números positivos.');
+ if(v.fp>1)return msg('El factor de potencia debe estar entre 0 y 1.');
+ if(v.oc_p>v.oc_v*v.oc_i){$('oc_p').classList.add('bad');return msg('Vacío: P no puede exceder V·I.')}
+ if(!v.given&&v.sc_p>v.sc_v*v.sc_i){$('sc_p').classList.add('bad');return msg('Cortocircuito: P no puede exceder V·I.')}
+ $('err').textContent='';
+ const dv=(x,y)=>pol(ab(x)/ab(y),ar(x)-ar(y));
+ const T=trafoCore(v),{a,RH,XLH,Rx,XLx,RCH,XM,Req,Xeq}=T;
+ if(!(RCH>0)||!(XM>0))return msg('Datos de vacío/cortocircuito inconsistentes: RCH o XLmcH salen negativos.');
+ const phi=Math.acos(v.fp),IL=v.S*1000/v.VX,ILc=pol(IL,-phi),ZL=pol(v.VX/IL,phi),VL=C(v.VX),I2=sc(ILc,1/a);
+ /* g) E2 = IL(Rx+jXLx)+VL ; E1 = a·E2 */
+ const Ex=add(mul(ILc,C(Rx,XLx)),VL),EH=sc(Ex,a);
+ /* h,i,j) rama de excitación en serie */
+ const Zexc=C(RCH,XM),Yexc=dv(C(1,0),Zexc),Iex=dv(EH,Zexc);
+ /* k,l,m) α = 90° − (|∠E1|+|∠Iexc|) ; Im = cos α·Iexc ; Ic = sin α·Iexc ; Pc = Ic²·RCH */
+ const alpha=Math.PI/2-(ar(EH)-ar(Iex)),Ic=Math.sin(alpha)*ab(Iex),Im=Math.cos(alpha)*ab(Iex),Pcore=Ic*Ic*RCH;
+ /* o,p) i1 = Iexc + IL/a ; Pcu = i1²·RH + IL²·Rx */
+ const Ih=add(Iex,I2),Pcu=ab(Ih)**2*RH+IL**2*Rx;
+ /* r,s) ε1 = E1 + i1(RH+jXLH) ; fp real = cos β */
+ const VHi=add(EH,mul(Ih,C(RH,XLH))),beta=ar(VHi)-ar(Ih),pfin=Math.cos(beta);
+ /* t,u) η y regulación */
+ const Pl=v.VX*IL*v.fp,Sin=ab(VHi)*ab(Ih),Pin=Sin*pfin,Qin=Sin*Math.sin(beta);
+ const eta=Pl/Pin*100,reg=(ab(VHi)/a-v.VX)/v.VX*100,kWh=Pl*v.hrs/1000;
+ return R={v,T,a,RH,XLH,Rx,XLx,RCH,XM,RCp:T.RCp,XMp:T.XMp,Req,Xeq,ZL,EH,Ex,Zexc,Yexc,Iex,Ih,VHi,IL,ILc,Pl,Pcore,Pcu,Pin,Sin,pfin,Qin,eta,reg,kWh,I2,Ic,Im,alpha,
+  Ecore:Pcore*v.hrs/1000,Ecu:Pcu*v.hrs/1000}}
+const cx=(z,u,d=2)=>`${F(z.r,d)} ${z.i<0?'−':'+'} j${F(Math.abs(z.i),d)} ${u}`,pl=(z,u,d=2)=>`${F(ab(z),d)} ${u} ∠ ${F(dg(ar(z)),2)}°`;
+function items(){const r=R;return[
+['a','Circuito equivalente normal','Referido al primario · 60 Hz',1],['b','Corriente de la carga',pl(r.ILc,'A',3)],['c','Energía de la carga (mes)',F(r.kWh,0)+' kWh/mes',1],
+['d','Importe económico mensual','$'+F(r.kWh*r.v.tar*(1+r.v.iva/100),2)+' MXN/mes'],['e','Emisiones de CO₂ · '+F(r.v.co2,3)+' kg CO₂/kWh',F(r.kWh*r.v.co2,1)+' kg CO₂/mes'],['f','Impedancia de la carga',pl(r.ZL,'Ω',4)+' = '+cx(r.ZL,'Ω',4)],
+['g','Voltajes inducidos','E1 '+pl(r.EH,'V',3)+' · E2 '+pl(r.Ex,'V',3)],['h','Impedancia de la rama de excitación',cx(r.Zexc,'Ω',3)+' = '+pl(r.Zexc,'Ω',3)],['i','Admitancia de la rama de excitación',F(ab(r.Yexc)*1e6,3)+' µS ∠ '+F(dg(ar(r.Yexc)),2)+'°'],
+['j','Corriente de excitación',pl(r.Iex,'A',4)],['k','Corriente de magnetización',F(r.Im,4)+' A ∠ '+F(dg(ar(r.Iex)),3)+'°'],['l','Corriente de pérdida de núcleo',F(r.Ic,4)+' A ∠ '+F(dg(ar(r.Iex)),3)+'°'],
+['m','Pérdida en el núcleo',F(r.Pcore,3)+' W'],['n','Energía disipada por el núcleo (mes)',F(r.Ecore,2)+' kWh/mes'],['o','Corriente a la entrada',pl(r.Ih,'A',4)],
+['p','Pérdida total de cobre',F(r.Pcu,3)+' W'],['q','Energía disipada por bobinas (mes)',F(r.Ecu,2)+' kWh/mes'],['r','Voltaje a la entrada',pl(r.VHi,'V',3)],
+['s','Factor de potencia a la entrada',F(r.pfin,4)+(ar(r.VHi)>ar(r.Ih)?' atrasado':' adelantado')],['t','Eficiencia',F(r.eta,3)+' %',1],['u','Regulación de voltaje a plena carga',F(r.reg,3)+' %']]}
+const T2=()=>{const r=R;return[['a','Relación de transformación (VH/VX)',F(r.a,3),'–'],['RH','Resistencia del devanado H',F(r.RH,4),'Ω'],['XLH','Reactancia de dispersión H',F(r.XLH,4),'Ω'],['RX','Resistencia del devanado X',F(r.Rx,4),'Ω'],['XLX','Reactancia de dispersión X',F(r.XLx,4),'Ω'],["R'CH",'Resistencia del núcleo referida a X',F(r.RCp,4),'Ω'],['RCH','Resistencia de pérdidas en el núcleo (lado H)',F(r.RCH,3),'Ω'],["X'LmcH",'Reactancia de magnetización referida a X',F(r.XMp,4),'Ω'],['XLmcH','Reactancia de magnetización (lado H)',F(r.XM,3),'Ω'],['Req,H','Req total referida a H',F(r.Req,4),'Ω'],['Xeq,H','Xeq total referida a H',F(r.Xeq,4),'Ω']]};
+function circuitSVG(st){const r=R,G='#2ECC71',w=2.5,L=(x,y,t)=>`<text x="${x}" y="${y}" fill="#cfe9dc" font-size="11" text-anchor="middle" font-family="Roboto Mono,monospace">${t}</text>`;
+ const ind=x=>`<path d="M${x},80 q10,-20 20,0 q10,-20 20,0 q10,-20 20,0" fill="none" stroke="${G}" stroke-width="${w}"/>`;
+ const P='M40,80 H560 V200 H40 Z';let p='';
+ if(!st&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){
+  for(let i=0;i<6;i++)p+=`<circle r="4.5" fill="#7dffb0"><animateMotion dur="7s" begin="${-i*7/6}s" repeatCount="indefinite" path="${P}"/></circle>`;
+  for(let i=0;i<2;i++)p+=`<circle r="3.5" fill="#5dade2"><animateMotion dur="3s" begin="${-i*1.5}s" repeatCount="indefinite" path="M280,80 V200"/></circle>`}
+ /* rama de excitación: cable vertical continuo entre el nodo superior, RCH, XLmcH y el nodo inferior */
+ const wire=`<g stroke="${G}" stroke-width="${w}" fill="none"><line x1="280" y1="80" x2="280" y2="100"/><line x1="280" y1="136" x2="280" y2="150"/><line x1="280" y1="182" x2="280" y2="200"/></g><circle cx="280" cy="80" r="4.5" fill="${G}"/><circle cx="280" cy="200" r="4.5" fill="${G}"/>`;
+ const open=st?'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 260" width="1200" height="520"><rect width="600" height="260" fill="#1f2d3a"/>':'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 260">';
+ return `${open}<text x="16" y="24" fill="${G}" font-size="11" font-weight="700" font-family="Roboto,sans-serif">CIRCUITO EQUIVALENTE · PARÁMETROS VARIABLES</text>
+<path d="${P}" fill="none" stroke="${G}" stroke-width="${w}"/>${wire}<rect x="90" y="70" width="60" height="20" fill="#1f2d3a" stroke="${G}" stroke-width="${w}"/>${L(120,58,'RH')}${L(120,108,F(r.RH,2)+' Ω')}
+${ind(170)}${L(200,58,'XLH')}${L(200,108,F(r.XLH,2)+' Ω')}<rect x="270" y="100" width="20" height="36" fill="#1f2d3a" stroke="${G}" stroke-width="${w}"/>${L(240,118,'RCH')}${L(236,132,F(r.RCH,0)+' Ω')}
+<path d="M280,150 q-16,8 0,16 q16,8 0,16" fill="none" stroke="${G}" stroke-width="${w}"/>${L(236,168,'XLmcH')}${L(236,182,F(r.XM,0)+' Ω')}
+<line x1="330" y1="70" x2="330" y2="210" stroke="#9aa7b0" stroke-width="2"/>${L(312,50,'N1')}${L(350,50,'N2')}
+<rect x="370" y="70" width="60" height="20" fill="#1f2d3a" stroke="#5dade2" stroke-width="${w}"/>${L(400,58,'RX')}${L(400,108,F(r.Rx,3)+' Ω')}
+<path d="M450,80 q10,-20 20,0 q10,-20 20,0 q10,-20 20,0" fill="none" stroke="${G}" stroke-width="${w}"/>${L(480,58,'XLX')}${L(480,108,F(r.XLx,3)+' Ω')}
+<rect x="550" y="110" width="20" height="60" fill="#1f2d3a" stroke="${G}" stroke-width="${w}"/>${L(535,144,'ZL')}
+<circle cx="40" cy="80" r="5" fill="${G}"/>${L(60,230,'VH · entrada')}${L(540,230,'VX · carga')}${L(300,246,'a = VH / VX = '+F(r.a,2))}${p}</svg>`}
+
+/* ======================= GRÁFICAS (compartido) ======================= */
+const ch={};
+const TH=()=>({ink:(getComputedStyle(document.documentElement).getPropertyValue('--mut')||'#5f7080').trim(),grid:'rgba(127,140,150,.22)'});
+const base=(legend,th)=>({responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:legend,labels:{boxWidth:12,color:th.ink}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:5,color:th.ink}},y:{grid:{color:th.grid},ticks:{color:th.ink}}},elements:{point:{radius:0},line:{tension:.3,borderWidth:2.5}}});
+function mk(id,type,data,opt,th){const el=$(id);if(!el||!window.Chart)return;
+ if(ch[id]&&ch[id].$k!==th.ink){ch[id].destroy();delete ch[id]}
+ if(ch[id]){ch[id].data=data;ch[id].options=opt;ch[id].update('none');return}
+ ch[id]=new Chart(el,{type,data,options:opt});ch[id].$k=th.ink}
+function chartPNG(cfg,w=900,h=420){const [type,data,opt]=cfg,c=document.createElement('canvas');c.width=w;c.height=h;
+ const bg={id:'bgw',beforeDraw(x){const k=x.ctx;k.save();k.fillStyle='#ffffff';k.fillRect(0,0,w,h);k.restore()}};
+ const o=Object.assign({},opt,{responsive:false,animation:false,devicePixelRatio:1,events:[]});
+ const x=new Chart(c,{type,data,options:o,plugins:[bg]});const u=c.toDataURL('image/png');x.destroy();return u}
+const svgPNG=(svg,w,h)=>new Promise((ok,no)=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);ok(c.toDataURL('image/png'))};im.onerror=no;im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
+
+/* Serie simulada del transformador */
+const N=16,lab=[],P=[],Q=[],S=[],FP=[];let tmin=8*60;
+const tl=m=>String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const lf=m=>0.62+0.3*Math.sin((m-420)/480*Math.PI*1.4)+(Math.random()-.5)*.08;
+function pt(){const l=Math.max(.3,lf(tmin)),r=R;lab.push(tl(tmin));P.push(r.Pin/1000*l);Q.push(r.Qin/1000*l);S.push(r.Sin/1000*l);FP.push(Math.min(1,Math.max(.7,r.pfin+(Math.random()-.5)*.03-(l-.6)*.04)));tmin+=30;if(lab.length>N){[lab,P,Q,S,FP].forEach(a=>a.shift())}}
+function seed(){lab.length=P.length=Q.length=S.length=FP.length=0;tmin=8*60;for(let i=0;i<N;i++)pt();draw()}
+function cfgTrafo(th){const r=R,mo=new Date().getMonth(),sea=[.85,.82,.9,.95,1.05,1.12,1.1,1.12,1.02,.96,.88,.9];
+ const o3=base(true,th);o3.scales.y={grid:{color:th.grid},ticks:{color:th.ink},min:.7,max:1};
+ return{c1:['line',{labels:lab,datasets:[{label:'P activa (kW)',data:P,borderColor:'#2ECC71'},{label:'S aparente (kVA)',data:S,borderColor:'#8e5fd0'}]},base(true,th)],
+ c2:['line',{labels:lab,datasets:[{label:'Q (kVAr)',data:Q,borderColor:'#3d8fe0'}]},base(false,th)],
+ c3:['line',{labels:lab,datasets:[{label:'FP',data:FP,borderColor:'#e6a317'},{label:'Umbral 0.95',data:FP.map(()=>.95),borderColor:'#e74c3c',borderDash:[6,4],borderWidth:1.5}]},o3],
+ c4:['bar',{labels:'E F M A M J J A S O N D'.split(' '),datasets:[{data:sea.map(s=>Math.round(r.Pin/1000*r.v.hrs*s)),backgroundColor:sea.map((_,i)=>i==mo?'#2ECC71':'#bdeccf'),borderRadius:4}]},base(false,th)]}}
+function draw(){const r=R,th=TH(),c=cfgTrafo(th);['c1','c2','c3','c4'].forEach(id=>mk(id,...c[id],th));
+ const i=P.length-1,f=FP[i];
+ $('kp3').innerHTML=K('Potencia activa',F(P[i])+' kW','Entrada del transformador')+K('Potencia reactiva',F(Q[i])+' kVAr','Carga inductiva')+K('Potencia aparente',F(S[i])+' kVA','Demanda actual')+K('Factor de potencia',F(f),'Umbral CFE ≥ 0.95');
+ $('al').innerHTML=f<.95?`<div class="alert bad"><b>⚠️ El factor de potencia está fuera de rango.</b> Tome acciones correctivas para mantenerlo ≥ 0.95.<div class="al-r"><span>Factor de potencia actual (FP &lt; 0.95)</span><span class="fp">● ${F(f)}</span></div></div>`:`<div class="alert ok"><b>✔ Factor de potencia dentro de rango</b> (${F(f)} ≥ 0.95)</div>`}
+function render(){if(!calc())return;const r=R;$('ra').textContent=F(r.a,2)+' : 1';$('rf').textContent=F(r.v.fp,2);
+ $$('[data-circ]').forEach(e=>e.innerHTML=circuitSVG());
+ $('kp').innerHTML=K('Eficiencia',F(r.eta,1)+'%','nominal calculada')+K('Voltaje de entrada',F(ab(r.VHi),0)+' V','∠ '+F(dg(ar(r.VHi)),2)+'°')+K('Pérdidas totales',F(r.Pin-r.Pl,1)+' W','entrada − carga')+K('Regulación',F(r.reg,2)+'%','a plena carga');
+ $('tb').innerHTML=T2().map(t=>`<tr><td>${t[0]}</td><td>${t[1]}</td><td class="n">${t[2]}</td><td>${t[3]}</td></tr>`).join('');
+ $('res').innerHTML=items().map(i=>`<div class="r ${i[3]?'hi':''}"><i>${i[0]})</i><div>${i[1]}<span>${i[2]}</span></div></div>`).join('');
+ seed()}
+setInterval(()=>{if(!$('auto').checked||!R)return;pt();draw()},2000);
+
+/* ======================= MOTOR: entrada, cálculo y pantallas ======================= */
+let uid=0;const MS=[];
+const newM=(o={})=>Object.assign({id:++uid,nombre:'',hp:'50',fp:'0.85',cant:'1',carga:'100',horas:'720',ef:''},o);
+MS.push(newM({hp:'200',fp:'0.865'}),newM({hp:'50',fp:'0.85',cant:'3'}));
+function rowsHTML(){return MS.map((m,i)=>{
+ const f=(k,lab,type)=>`<div><label for="m${m.id}_${k}">${lab}</label><input id="m${m.id}_${k}" data-m="${m.id}" data-k="${k}" type="${type||'number'}" ${type==='text'?`placeholder="${esc(m.cant)} x ${esc(m.hp)} HP"`:'step="any" inputmode="decimal"'} value="${esc(m[k])}"></div>`;
+ return `<div class="grp"><div class="row-h"><b>Motor ${i+1}</b>${MS.length>1?`<button class="btn ol sm" data-rm="${m.id}" type="button">Quitar</button>`:''}</div><div class="f">${f('nombre','Nombre (opcional)','text')}${f('hp','Potencia de un motor (HP)')}${f('fp','Factor de potencia')}${f('cant','Cantidad de motores')}${f('carga','Carga (%)')}${f('horas','Horas al mes')}${f('ef','Eficiencia (%, opcional)')}</div></div>`}).join('')}
+const PM={hp_kw:'p_hpkw',tarifa:'p_tarifa',iva:'p_iva',fp_ref:'p_fpref',fp_obj:'p_fpobj',kvb:'p_kvb',ckv:'p_ckv',termos:'p_termos',cable:'p_cable',mo:'p_mo',tope_r:'p_toper',tope_b:'p_topeb'};
+const MSG={hp:'Los HP deben ser mayores a 0.',fp:'El FP debe estar entre 0 y 1.',cant:'La cantidad debe ser un entero de al menos 1.',carga:'La carga debe estar entre 0 y 100 %.',horas:'Las horas deben ser mayores a 0.',ef:'La eficiencia debe estar entre 0 y 100 %.'};
+function calcMotor(){
+ const p={};let msg='';const mark=(el,b)=>{if(el)el.classList.toggle('bad',b)};
+ Object.entries(PM).forEach(([k,id])=>{const el=$(id),v=parseFloat(el.value);p[k]=v;let ok=isFinite(v)&&v>=0;
+  if(['hp_kw','tarifa','iva','kvb'].includes(k))ok=ok&&v>0;if(k==='fp_ref'||k==='fp_obj')ok=ok&&v>0&&v<=1;
+  mark(el,!ok);if(!ok&&!msg)msg='Revisa los parámetros marcados en rojo.'});
+ const ms=[];if(!MS.length)msg=msg||'Captura al menos un motor.';
+ MS.forEach((m,i)=>{
+  const efv=String(m.ef).trim()===''?0:parseFloat(m.ef);
+  const v={nombre:m.nombre.trim(),hp:parseFloat(m.hp),fp:parseFloat(m.fp),cant:Number(m.cant),carga:parseFloat(m.carga)/100,horas:parseFloat(m.horas),ef:efv===0?null:efv/100};
+  const chk={hp:v.hp>0,fp:v.fp>0&&v.fp<=1,cant:Number.isInteger(v.cant)&&v.cant>=1,carga:v.carga>0&&v.carga<=1,horas:v.horas>0,ef:v.ef===null||(efv>0&&efv<=100)};
+  Object.entries(chk).forEach(([k,ok])=>{mark($('m'+m.id+'_'+k),!ok);if(!ok&&!msg)msg=`Motor ${i+1}: ${MSG[k]}`});
+  ms.push(v)});
+ $('merr').textContent=msg;if(msg)return null;
+ return MR=Object.assign(motorCore(ms,p),{p})}
+function triSVG(){const r=MR,oy=212,ox=70,Pt=r.Pt,s=Math.min(430/Pt,150/Math.max(r.Q1,1e-9)),px=ox+Pt*s,y1=oy-r.Q1*s,y2=oy-r.Q2*s;
+ const ph1=Math.atan2(r.Q1,Pt),ph2=Math.atan2(r.Q2,Pt),arc=(R,a)=>`M${ox+R},${oy} A${R},${R} 0 0 0 ${ox+R*Math.cos(a)},${oy-R*Math.sin(a)}`;
+ const d=x=>x*180/Math.PI,fp1=Pt/r.S1,fp2=Pt/r.S2;
+ return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 260"><text x="16" y="24" fill="#2ECC71" font-size="11" font-weight="700" font-family="Roboto,sans-serif">TRIÁNGULO DE POTENCIAS · PLANTA</text>
+<line x1="${ox}" y1="${oy}" x2="${px}" y2="${oy}" stroke="#2ECC71" stroke-width="3"/>
+<line x1="${px}" y1="${oy}" x2="${px}" y2="${y1}" stroke="#e6a317" stroke-width="3"/>
+<line x1="${px}" y1="${oy}" x2="${px}" y2="${y2}" stroke="#5dade2" stroke-width="3"/>
+<line x1="${ox}" y1="${oy}" x2="${px}" y2="${y1}" stroke="#aab8c4" stroke-width="1.5" stroke-dasharray="5 4"/>
+<line x1="${ox}" y1="${oy}" x2="${px}" y2="${y2}" stroke="#aab8c4" stroke-width="1.5"/>
+<path d="${arc(70,ph1)}" fill="none" stroke="#e6a317" stroke-width="2"/><path d="${arc(52,ph2)}" fill="none" stroke="#5dade2" stroke-width="2"/>
+<circle cx="${ox}" cy="${oy}" r="4" fill="#cfe9dc"/>
+<text x="300" y="234" fill="#cfe9dc" font-size="11" text-anchor="middle" font-family="Roboto Mono,monospace"><tspan fill="#2ECC71">P = ${F(Pt,1)} kW</tspan>  ·  <tspan fill="#e6a317">Q actual = ${F(r.Q1,1)} kvar</tspan></text>
+<text x="300" y="250" fill="#cfe9dc" font-size="11" text-anchor="middle" font-family="Roboto Mono,monospace"><tspan fill="#5dade2">Q corregido = ${F(r.Q2,1)} kvar</tspan>  ·  φ ${F(d(ph1),1)}° → ${F(d(ph2),1)}°</text></svg>`}
+function renderMotor(){const r=calcMotor();if(!r)return;const p=r.p;
+ $('tri').innerHTML=triSVG();$('tr1').textContent=r.rows.reduce((a,x)=>a+x.cant,0);$('tr2').textContent=F(r.Pt,1)+' kW';$('tr3').textContent=F(r.Pt/r.S1,3)+' → '+F(r.Pt/r.S2,3);
+ $('mkp').innerHTML=K('Factura original',M$(r.orig),'con recargos e IVA')+K('Factura corregida',M$(r.corr),'FP objetivo '+F(p.fp_obj,2))
+  +K('Banco necesario',r.ya?'–':F(r.kvar,1)+' kvar',r.ya?'ya cumplen el FP objetivo':r.n+' bancos · '+F(r.kinst,0)+' kvar instalados')
+  +K('Retorno',r.ya||r.meses==null?'–':F(r.meses,1)+' meses',r.ya?'no aplica':r.meses==null?'sin ahorro':'redondeado: '+r.mesesR+' meses');
+ $('mtb').innerHTML=r.rows.map(x=>`<tr><td><b>${esc(x.nombre)}</b></td><td class="n">${F(x.fp,3)}</td><td class="n">${F(x.kw,1)}</td><td class="n">${F(x.kwh,0)}</td><td class="n">${F(x.costo,0)}</td><td class="n">${F(x.q1,0)}</td><td class="n">${F(x.q2,0)}</td><td class="n">${F(x.rp,3)}%</td><td class="n">${F(x.rec,0)}</td><td class="n">${F(x.bp,4)}%</td><td class="n">${F(x.bon,0)}</td></tr>`).join('');
+ $('mres').innerHTML=motorItems().map(i=>`<div class="r ${i[3]?'hi':''}"><i>${i[0]})</i><div>${i[1]}<span>${esc(i[2])}</span></div></div>`).join('');
+ const low=r.rows.filter(x=>x.fp<p.fp_ref);
+ $('mal').innerHTML=low.length?`<div class="alert bad"><b>⚠️ El factor de potencia está fuera de rango.</b> Tome acciones correctivas para mantenerlo ≥ ${F(p.fp_ref,2)}.<div class="al-r"><span>${low.length} de ${r.rows.length} renglones con recargo: ${esc(low.map(x=>x.nombre+' ('+F(x.fp,3)+')').join(', '))}</span><span class="fp">● ${F(Math.min(...low.map(x=>x.fp)),3)}</span></div></div>`:`<div class="alert ok"><b>✔ Todos los motores cumplen el FP de referencia</b> (≥ ${F(p.fp_ref,2)})</div>`;
+ $('mkp3').innerHTML=K('Potencia activa',F(r.Pt,1)+' kW','Suma de motores')+K('Potencia reactiva',F(r.Q1,1)+' kVAr','Con banco: '+F(r.Q2,1)+' kVAr')+K('Potencia aparente',F(r.S1,1)+' kVA','Con banco: '+F(r.S2,1)+' kVA')+K('Factor de potencia',F(r.Pt/r.S1,3),'Con banco: '+F(r.Pt/r.S2,3));
+ drawMotor()}
+function motorItems(){const r=MR,p=r.p,ya=r.ya;return[
+ ['a','Energía total del mes',F(r.kwh,0)+' kWh'],['b','Costo de la energía',M$(r.base)],['c','Recargos por bajo FP',M$(r.rec)],['d','Bonificaciones por FP',M$(r.bon)],
+ ['e','Factura original (con IVA)',M$(r.orig),1],['f','Factura corregida (con IVA)',M$(r.corr),1],
+ ['g','Banco necesario',ya?'No se necesita banco':F(r.kvar,2)+' kvar'],['h','Bancos a instalar',ya?'–':r.n+' × '+F(p.kvb,0)+' kvar = '+F(r.kinst,0)+' kvar'],
+ ['i','Inversión',ya?'–':M$(r.inv)],['j','Ahorro mensual',M$(r.ahorro)],
+ ['k','Retorno de la inversión',ya?'No aplica':r.meses==null?'No hay ahorro: la inversión no se recupera':F(r.meses,2)+' meses → '+r.mesesR+' meses',1]]}
+function cfgMotor(th){const r=MR,p=r.p,nm=r.rows.map(x=>x.nombre);
+ const o5=base(false,th);o5.scales.y.beginAtZero=true;o5.plugins.tooltip={callbacks:{label:c=>M$(c.parsed.y)}};
+ const fps=r.rows.map(x=>x.fp),lo=Math.max(0,Math.floor((Math.min(...fps,p.fp_ref)-.1)*20)/20);
+ const o7=base(true,th);o7.scales.y.min=lo;o7.scales.y.max=1;
+ const Nm=Math.min(60,Math.max(12,Math.ceil((r.meses||12)*1.5))),mm=[...Array(Nm+1).keys()];
+ const o8=base(true,th);o8.scales.x.ticks.maxTicksLimit=7;o8.scales.x.title={display:true,text:'Meses',color:th.ink};
+ return{c5:['bar',{labels:['Factura original','Factura corregida'],datasets:[{data:[r.orig,r.corr],backgroundColor:['#e6a317','#2ECC71'],borderRadius:4}]},o5],
+ c6:['bar',{labels:nm,datasets:[{label:'Actual (kvarh)',data:r.rows.map(x=>x.q1),backgroundColor:'#3d8fe0',borderRadius:4},{label:'Con corrección (kvarh)',data:r.rows.map(x=>x.q2),backgroundColor:'#2ECC71',borderRadius:4}]},base(true,th)],
+ c7:['bar',{labels:nm,datasets:[{type:'bar',label:'FP actual',data:fps,backgroundColor:fps.map(f=>f<p.fp_ref?'#e74c3c':'#2ECC71'),borderRadius:4},{type:'line',label:'FP de referencia',data:fps.map(()=>p.fp_ref),borderColor:'#e6a317',borderDash:[6,4],borderWidth:1.5,pointRadius:0}]},o7],
+ c8:['line',{labels:mm,datasets:[{label:'Ahorro acumulado',data:mm.map(m=>r.ahorro*m),borderColor:'#2ECC71'},{label:'Inversión',data:mm.map(()=>r.inv),borderColor:'#e74c3c',borderDash:[6,4],borderWidth:1.5}]},o8]}}
+const payOk=r=>!r.ya&&r.meses!=null;
+function drawMotor(){const r=MR,th=TH(),c=cfgMotor(th);['c5','c6','c7'].forEach(id=>mk(id,...c[id],th));
+ const ok=payOk(r);$('c8w').hidden=!ok;$('c8e').hidden=ok;
+ if(ok)mk('c8',...c.c8,th);else{if(ch.c8){ch.c8.destroy();delete ch.c8}$('c8e').textContent=r.ya?'No se necesita banco: no hay inversión que recuperar.':'No hay ahorro: la inversión no se recupera.'}}
+
+/* ======================= PDF (jsPDF) ======================= */
+const AW=210,AH=297,MG=14,CW=182;
+const san=s=>String(s).replace(/Ω/g,'ohm').replace(/∠/g,'<').replace(/[−–—·]/g,'-').replace(/₂/g,'2').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/→/g,'->').replace(/φ/g,'fi').replace(/[⚠✔●]/g,'').replace(/️/g,'').replace(/[^\x20-\x7E -ÿ]/g,'?');
+function pBand(S,first){const d=S.doc,h=first?24:12;d.setFillColor(44,62,80);d.rect(0,0,AW,h,'F');d.setFillColor(46,204,113);d.rect(0,h,AW,1.2,'F');
+ d.setTextColor(255,255,255);d.setFont('helvetica','bold');d.setFontSize(first?17:10);d.text('TrafoLab',MG,first?11:7.8);
+ d.setFont('helvetica','normal');d.setFontSize(first?9:8);d.setTextColor(170,184,196);d.text(san(S.sub),first?MG:MG+22,first?18:7.8);
+ d.text(new Date().toLocaleDateString('es-MX'),AW-MG,first?11:7.8,{align:'right'});S.y=h+10}
+function pNew(sub){const {jsPDF}=window.jspdf,S={doc:new jsPDF({unit:'mm',format:'a4'}),sub};pBand(S,true);return S}
+const pEnsure=(S,h)=>{if(S.y+h>AH-16){S.doc.addPage();pBand(S,false)}};
+function pTitle(S,t,sub){const d=S.doc;d.setTextColor(44,62,80);d.setFont('helvetica','bold');d.setFontSize(16);d.text(san(t),MG,S.y);S.y+=6.5;
+ if(sub){d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(95,112,128);const l=d.splitTextToSize(san(sub),CW);d.text(l,MG,S.y);S.y+=l.length*4+3}}
+function pH2(S,t){pEnsure(S,14);const d=S.doc;d.setTextColor(44,62,80);d.setFont('helvetica','bold');d.setFontSize(11.5);d.text(san(t),MG,S.y);d.setFillColor(46,204,113);d.rect(MG,S.y+1.6,10,.9,'F');S.y+=7}
+function pKpis(S,it){pEnsure(S,24);const d=S.doc,w=(CW-12)/4;it.forEach((k,i)=>{const x=MG+i*(w+4);d.setDrawColor(210,220,214);d.setLineWidth(.3);d.roundedRect(x,S.y,w,19,2,2,'S');
+ d.setFont('helvetica','normal');d.setFontSize(6.8);d.setTextColor(95,112,128);d.text(san(k[0]).toUpperCase(),x+3,S.y+5.2);
+ d.setFont('courier','bold');d.setFontSize(12);d.setTextColor(44,62,80);d.text(san(k[1]),x+3,S.y+12);
+ d.setFont('helvetica','normal');d.setFontSize(6.8);d.setTextColor(95,112,128);d.text(d.splitTextToSize(san(k[2]||''),w-5)[0]||'',x+3,S.y+16.6)});S.y+=25}
+function pTable(S,cols,rows,o={}){const d=S.doc,fs=o.fs||8.5,lh=fs*0.42,pad=1.6,W=cols.reduce((a,c)=>a+c.w,0);
+ const head=()=>{pEnsure(S,12);d.setFillColor(44,62,80);d.rect(MG,S.y,W,7,'F');d.setTextColor(255,255,255);d.setFont('helvetica','bold');d.setFontSize(fs-.8);
+  let x=MG;cols.forEach(c=>{d.text(san(c.h),c.a==='r'?x+c.w-pad:x+pad,S.y+4.7,{align:c.a==='r'?'right':'left'});x+=c.w});S.y+=7};
+ head();
+ rows.forEach((r,i)=>{d.setFontSize(fs);const cells=r.map((v,j)=>d.splitTextToSize(san(v),cols[j].w-2*pad)),h=Math.max(...cells.map(c=>c.length))*lh+3.2;
+  if(S.y+h>AH-16){d.addPage();pBand(S,false);head()}
+  if(i%2===0){d.setFillColor(244,247,245);d.rect(MG,S.y,W,h,'F')}
+  let x=MG;cells.forEach((c,j)=>{const k=cols[j];d.setFont(k.f||'helvetica',k.b?'bold':'normal');d.setFontSize(fs);d.setTextColor(...(k.col||[44,62,80]));
+   d.text(c,k.a==='r'?x+k.w-pad:x+pad,S.y+pad+lh*.8,{align:k.a==='r'?'right':'left'});x+=k.w});S.y+=h});
+ d.setDrawColor(210,220,214);d.setLineWidth(.2);d.line(MG,S.y,MG+W,S.y);S.y+=5}
+function pAlert(S,t,sub,ok){const d=S.doc;d.setFontSize(9.5);const l=d.splitTextToSize(san(t),CW-8),sl=sub?d.splitTextToSize(san(sub),CW-8):[],h=6+l.length*4.6+sl.length*4+3;
+ pEnsure(S,h+2);d.setFillColor(...(ok?[232,248,239]:[253,236,234]));d.setDrawColor(...(ok?[46,204,113]:[231,76,60]));d.setLineWidth(.4);d.roundedRect(MG,S.y,CW,h,2,2,'FD');
+ d.setTextColor(...(ok?[26,154,82]:[231,76,60]));d.setFont('helvetica','bold');d.setFontSize(9.5);d.text(l,MG+4,S.y+6);
+ if(sl.length){d.setFont('helvetica','normal');d.setFontSize(8.5);d.setTextColor(44,62,80);d.text(sl,MG+4,S.y+6+l.length*4.6+1)}S.y+=h+5}
+function pImg(S,url,w,h,x){pEnsure(S,h+3);S.doc.addImage(url,'PNG',x==null?MG:x,S.y,w,h);S.y+=h+4}
+function pCharts(S,list){const d=S.doc,w=(CW-6)/2,h=w*420/900;
+ for(let i=0;i<list.length;i+=2){pEnsure(S,h+10);const y0=S.y;
+  list.slice(i,i+2).forEach((c,j)=>{const x=MG+j*(w+6);d.setFont('helvetica','bold');d.setFontSize(8.5);d.setTextColor(44,62,80);d.text(san(c.t),x,y0);d.addImage(c.url,'PNG',x,y0+1.5,w,h)});
+  S.y=y0+h+8}}
+function pFinish(S,note){const d=S.doc,n=d.getNumberOfPages();for(let i=1;i<=n;i++){d.setPage(i);d.setFont('helvetica','normal');d.setFontSize(7.5);d.setTextColor(120,135,148);d.text(san(note),MG,AH-8);d.text(`Página ${i} de ${n}`,AW-MG,AH-8,{align:'right'})}return d.output('blob')}
+
+async function pdfTrafo(){
+ if(!window.jspdf)throw{code:'nolib'};if(!calc())throw{code:'invalid'};
+ const r=R,v=r.v,S=pNew('Análisis de transformadores · modelo equivalente referido al primario');
+ pTitle(S,'Resultados del modelo','Parámetros, pérdidas y desempeño calculados a partir de la Tabla 1.');
+ pH2(S,'Datos de entrada');
+ pTable(S,[{h:'Prueba / dato',w:70},{h:'Corriente (A)',w:37,a:'r'},{h:'Voltaje (V)',w:37,a:'r'},{h:'Potencia (W)',w:38,a:'r'}],[['Vacío (medida en el lado '+(r.T.ocX?'X':'H')+')',F(v.oc_i,2),F(v.oc_v,1),F(v.oc_p,1)],v.given?['RH = '+F(v.rhg,3)+' Ω · XLH = '+F(v.xlhg,3)+' Ω (dados, lado H)','–','–','–']:['Cortocircuito (medida en el lado '+(r.T.scH?'H':'X')+')',F(v.sc_i,2),F(v.sc_v,1),F(v.sc_p,1)]]);
+ pTable(S,[{h:'Dato nominal y de operación',w:110},{h:'Valor',w:72,a:'r'}],[['Potencia nominal S',F(v.S,1)+' kVA'],['Voltaje primario VH',F(v.VH,0)+' V'],['Voltaje secundario VX',F(v.VX,0)+' V'],['Factor de potencia de la carga (atrasado)',F(v.fp,2)],['Horas de trabajo al mes',F(v.hrs,0)+' h'],['Tarifa',F(v.tar,2)+' MXN/kWh']]);
+ pKpis(S,[['Eficiencia',F(r.eta,1)+'%','nominal calculada'],['Voltaje de entrada',F(ab(r.VHi),0)+' V','< '+F(dg(ar(r.VHi)),1)+' deg'],['Pérdidas totales',F(r.Pin-r.Pl,1)+' W','entrada − carga'],['Regulación',F(r.reg,2)+'%','a plena carga']]);
+ pH2(S,'Circuito equivalente normal');
+ try{pImg(S,await svgPNG(circuitSVG(true),1200,520),150,150*260/600,MG+16)}catch(e){}
+ pH2(S,'Tabla 2 · Parámetros calculados');
+ pTable(S,[{h:'Símbolo',w:28,f:'courier',b:1,col:[26,154,82]},{h:'Parámetro',w:100},{h:'Valor',w:30,a:'r',f:'courier'},{h:'Unidad',w:24}],T2());
+ pH2(S,'Resultados completos · a-u');
+ pTable(S,[{h:'Inciso',w:16,f:'courier',b:1,col:[26,154,82]},{h:'Descripción',w:78},{h:'Valor',w:88,f:'courier'}],items().map(i=>[i[0]+')',i[1],i[2]]),{fs:8});
+ const c=cfgTrafo({ink:'#2C3E50',grid:'#dfe6e1'}),f=FP[FP.length-1];
+ pH2(S,'Comportamiento (escenario simulado, ventana de 8 h)');
+ if(f<.95)pAlert(S,'⚠️ El factor de potencia está fuera de rango. Tome acciones correctivas para mantenerlo ≥ 0.95.','Factor de potencia actual: '+F(f)+' (umbral CFE 0.95).',false);
+ else pAlert(S,'Factor de potencia dentro de rango: '+F(f)+' (umbral CFE ≥ 0.95).','',true);
+ pCharts(S,[{t:'Potencia activa (P) y aparente (S)',url:chartPNG(c.c1)},{t:'Potencia reactiva (Q)',url:chartPNG(c.c2)},{t:'Factor de potencia',url:chartPNG(c.c3)},{t:'Consumo mensual (kWh)',url:chartPNG(c.c4)}]);
+ return pFinish(S,'Calculado con TrafoLab (modelo monofásico, 60 Hz). No sustituye una prueba certificada.')}
+async function pdfMotor(){
+ if(!window.jspdf)throw{code:'nolib'};const r=calcMotor();if(!r)throw{code:'invalid'};const p=r.p,S=pNew('Análisis de motor · factor de potencia, banco de capacitores y retorno · tarifa GDMTH');
+ pTitle(S,'Análisis de motor','Energía, recargos y bonificaciones por factor de potencia, banco de capacitores y retorno de inversión.');
+ pKpis(S,[['Factura original',M$(r.orig),'con recargos e IVA'],['Factura corregida',M$(r.corr),'FP objetivo '+F(p.fp_obj,2)],['Banco necesario',r.ya?'-':F(r.kvar,1)+' kvar',r.ya?'ya cumplen el FP objetivo':r.n+' bancos / '+F(r.kinst,0)+' kvar'],['Retorno',r.ya||r.meses==null?'-':F(r.meses,1)+' meses',r.ya?'no aplica':r.meses==null?'sin ahorro':'redondeado: '+r.mesesR+' meses']]);
+ const low=r.rows.filter(x=>x.fp<p.fp_ref);
+ if(low.length)pAlert(S,'⚠️ El factor de potencia está fuera de rango. Tome acciones correctivas para mantenerlo ≥ '+F(p.fp_ref,2)+'.',low.length+' de '+r.rows.length+' renglones con recargo: '+low.map(x=>x.nombre+' ('+F(x.fp,3)+')').join(', ')+'.',false);
+ else pAlert(S,'Todos los motores cumplen el FP de referencia (>= '+F(p.fp_ref,2)+').','',true);
+ pH2(S,'Motores capturados');
+ pTable(S,[{h:'Renglón',w:54},{h:'HP',w:18,a:'r'},{h:'Cant.',w:16,a:'r'},{h:'FP',w:18,a:'r'},{h:'Carga',w:24,a:'r'},{h:'Horas/mes',w:28,a:'r'},{h:'Efic.',w:24,a:'r'}],r.rows.map(x=>[x.nombre,F(x.hp,1),x.cant,F(x.fp,3),F(x.carga*100,0)+'%',F(x.horas,0),x.ef?F(x.ef*100,1)+'%':'-']));
+ pH2(S,'Parámetros utilizados');
+ const pr=[['HP a kW',F(p.hp_kw,3)],['Tarifa',M$(p.tarifa)+'/kWh'],['IVA (factor)',F(p.iva,2)],['FP de referencia',F(p.fp_ref,2)],['FP objetivo',F(p.fp_obj,2)],['kvar por banco',F(p.kvb,0)],['Costo por kvar',M$(p.ckv)],['Termomagnéticos',M$(p.termos)],['Cable',M$(p.cable)],['Mano de obra',M$(p.mo)],['Tope de recargo',F(p.tope_r,1)+'%'],['Tope de bonificación',F(p.tope_b,1)+'%']];
+ const pr4=[];for(let i=0;i<pr.length;i+=2)pr4.push([...pr[i],...pr[i+1]]);
+ pTable(S,[{h:'Parámetro',w:56},{h:'Valor',w:35,a:'r',f:'courier'},{h:'Parámetro',w:56},{h:'Valor',w:35,a:'r',f:'courier'}],pr4);
+ pH2(S,'Tabla 3 · Consumo y reactivos por motor');
+ pTable(S,[{h:'Renglón',w:30},{h:'FP',w:12,a:'r'},{h:'kWh/mes',w:20,a:'r'},{h:'Costo ($)',w:22,a:'r'},{h:'Q1 kvarh',w:18,a:'r'},{h:'Q2 kvarh',w:18,a:'r'},{h:'Rec. %',w:13,a:'r'},{h:'Rec. ($)',w:17,a:'r'},{h:'Bon. %',w:13,a:'r'},{h:'Bon. ($)',w:19,a:'r'}],r.rows.map(x=>[x.nombre,F(x.fp,3),F(x.kwh,0),F(x.costo,0),F(x.q1,0),F(x.q2,0),F(x.rp,3),F(x.rec,0),F(x.bp,4),F(x.bon,0)]),{fs:7.2});
+ pH2(S,'Resumen económico y banco de capacitores');
+ pTable(S,[{h:'Concepto',w:110},{h:'Valor',w:72,a:'r',f:'courier'}],motorItems().map(i=>[i[1],i[2]]));
+ const c=cfgMotor({ink:'#2C3E50',grid:'#dfe6e1'}),L=[{t:'Factura mensual (con IVA)',url:chartPNG(c.c5)},{t:'Reactivos por motor (kvarh/mes)',url:chartPNG(c.c6)},{t:'Factor de potencia por motor',url:chartPNG(c.c7)}];
+ if(payOk(r))L.push({t:'Retorno de la inversión (meses)',url:chartPNG(c.c8)});
+ pH2(S,'Gráficas');pCharts(S,L);
+ return pFinish(S,'Calculado con TrafoLab. Los resultados son mensuales y dependen de los parámetros capturados.')}
+
+/* ======================= CSV y descarga ======================= */
+function csvTrafo(){if(!calc())throw{code:'invalid'};const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+ return 'inciso,descripcion,valor\n'+items().map(i=>[i[0],q(i[1]),q(i[2])].join(',')).join('\n')+'\n\nsimbolo,parametro,valor,unidad\n'+T2().map(t=>[q(t[0]),q(t[1]),q(t[2]),q(t[3])].join(',')).join('\n')}
+function csvMotor(){if(!calcMotor())throw{code:'invalid'};const r=MR,q=s=>'"'+String(s).replace(/"/g,'""')+'"',n=(x,d)=>Number(x).toFixed(d);
+ return 'renglon,fp,kw,kwh_mes,costo,q1_kvarh,q2_kvarh,recargo_pct,recargo,bonif_pct,bonif\n'+r.rows.map(x=>[q(x.nombre),n(x.fp,3),n(x.kw,2),n(x.kwh,0),n(x.costo,2),n(x.q1,0),n(x.q2,0),n(x.rp,3),n(x.rec,2),n(x.bp,4),n(x.bon,2)].join(',')).join('\n')+'\n\nconcepto,valor\n'+motorItems().map(i=>[q(i[1]),q(i[2])].join(',')).join('\n')}
+const errMsg=e=>({declined:'Descarga cancelada.',host_unavailable:'Este visor no puede guardar archivos. Abre la página en un navegador.',nolib:'No se pudo cargar el generador de PDF. Revisa tu conexión.',invalid:'Revisa los datos marcados en rojo antes de descargar.',rate_limited:'Espera un momento e inténtalo de nuevo.'}[e&&e.code]||'No se pudo guardar el archivo. Intenta de nuevo.');
+async function dl(name,make,el){let d=null;try{d=await (window.claude&&window.claude.use?window.claude.use('downloads'):null)}catch(e){}
+ if(!d){try{el.textContent='Preparando archivo…';const data=await make();const blob=data instanceof Blob?data:new Blob([data],{type:'text/csv;charset=utf-8'});const u=URL.createObjectURL(blob),l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);el.textContent='Listo: '+name;return 'ok'}catch(e){el.textContent=errMsg(e);console.error(e);return 'fail'}}
+ try{el.textContent='Preparando archivo…';const data=await make();await d.save({filename:name,data});el.textContent='Listo: '+name;return 'ok'}
+ catch(e){el.textContent=errMsg(e);console.error(e);return 'fail'}}
+async function doCsv(make,name,el,box,ta){let txt;try{txt=make()}catch(e){el.textContent=errMsg(e);return}
+ const r=await dl(name,()=>'﻿'+txt,el);if(r==='unavail'){$(ta).value=txt;$(box).hidden=false;el.textContent='Descarga no disponible aquí.'}}
+
+/* ======================= Navegación y eventos ======================= */
+const cur={trafo:'t1',motor:'m1'};let mode='trafo';
+function show(){$$('.tab').forEach(t=>t.classList.toggle('on',t.id===cur[mode]));
+ $$('nav').forEach(n=>{n.hidden=n.dataset.mode!==mode;n.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.t===cur[n.dataset.mode]))});
+ $$('.mode button').forEach(b=>{const on=b.dataset.mode===mode;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
+ scrollTo(0,0);requestAnimationFrame(()=>Object.values(ch).forEach(c=>c.resize()))}
+$$('nav button').forEach(b=>b.onclick=()=>{cur[b.parentNode.dataset.mode]=b.dataset.t;show()});
+$$('.mode button').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;show()});
+ids.forEach(k=>$(k).addEventListener('input',()=>{if($('auto').checked)render()}));
+$('wmode').addEventListener('change',()=>{const g=$('wmode').value==='given';$('g_sc').hidden=g;$('g_given').hidden=!g;render()});
+$('calc').onclick=()=>{render();if(R){cur.trafo='t2';show()}};
+$('pdf1').onclick=()=>dl(`TrafoLab-transformador-${stamp()}.pdf`,pdfTrafo,$('dm1')).then(r=>{if(r==='unavail')$('dm1').textContent='Descarga no disponible aquí.'});
+$('csv1').onclick=()=>doCsv(csvTrafo,`TrafoLab-transformador-${stamp()}.csv`,$('dm1'),'xp','csv');
+$('mrows').innerHTML=rowsHTML();
+$('mrows').addEventListener('input',e=>{const t=e.target,m=MS.find(x=>x.id==t.dataset.m);if(!m)return;m[t.dataset.k]=t.value;if($('mauto').checked)renderMotor()});
+$('mrows').addEventListener('click',e=>{const b=e.target.closest('[data-rm]');if(!b)return;const i=MS.findIndex(x=>x.id==b.dataset.rm);if(i>-1&&MS.length>1){MS.splice(i,1);$('mrows').innerHTML=rowsHTML();renderMotor()}});
+$('madd').onclick=()=>{MS.push(newM());$('mrows').innerHTML=rowsHTML();renderMotor()};
+$$('#pm input').forEach(e=>e.addEventListener('input',()=>{if($('mauto').checked)renderMotor()}));
+$('mcalc').onclick=()=>{renderMotor();if(MR){cur.motor='m2';show()}};
+$('pdf2').onclick=()=>dl(`TrafoLab-motor-${stamp()}.pdf`,pdfMotor,$('dm2')).then(r=>{if(r==='unavail')$('dm2').textContent='Descarga no disponible aquí.'});
+$('csv2').onclick=()=>doCsv(csvMotor,`TrafoLab-motor-${stamp()}.csv`,$('dm2'),'mxp','mcsv');
+$$('.cpb').forEach(b=>b.onclick=()=>{const t=$(b.dataset.ta);t.select();try{navigator.clipboard.writeText(t.value).catch(()=>{})}catch(e){}b.textContent='¡Copiado!'});
+if(window.Chart){Chart.defaults.font.family='Roboto,sans-serif'}
+render();renderMotor();
+</script>
+
+</body></html>
